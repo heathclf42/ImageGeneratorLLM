@@ -300,6 +300,7 @@ class FluxGenerator:
 if __name__ == "__main__":
     # Test the FLUX generator
     import sys
+    from pathlib import Path
 
     print("Testing FLUX.1 Schnell Generator")
     print("=" * 50)
@@ -314,8 +315,11 @@ if __name__ == "__main__":
         prompt = "a cat astronaut on mars, digital art"
         image = gen.generate(prompt, num_inference_steps=4)
 
-        # Save
-        output_path = "test_flux_output.png"
+        # Save to outputs directory
+        output_dir = Path(get_config().output["directory"])
+        output_dir.mkdir(parents=True, exist_ok=True)
+        output_path = output_dir / "test_flux_output.png"
+
         image.save(output_path)
         print(f"\n✓ Test image saved to: {output_path}")
         print(f"  Size: {image.size}")
