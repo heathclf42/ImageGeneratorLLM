@@ -46,8 +46,9 @@ outputs/*.jpg
 outputs/*.jpeg
 !outputs/.gitkeep
 
-# Model cache (optional - comment out if you want to track models)
-models/
+# Model cache (downloaded model files - not source code)
+# Note: image_gen/models/ contains source code and should be tracked
+/models/
 .cache/
 huggingface/
 
