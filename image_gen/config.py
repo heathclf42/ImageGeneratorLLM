@@ -56,12 +56,12 @@ class Config:
         # Default configuration
         self.models: Dict[str, Any] = {
             "flux": {
-                "model_id": "black-forest-labs/FLUX.1-schnell",
+                "model_id": "stabilityai/stable-diffusion-xl-base-1.0",  # Using SDXL as primary for now
                 "keep_loaded": True,  # Primary model, always in memory
                 "idle_timeout": None,  # Never unload
-                "default_steps": 4,
+                "default_steps": 30,  # SDXL needs more steps than FLUX
                 "default_size": (1024, 1024),
-                "guidance_scale": 0.0,  # Schnell doesn't use guidance
+                "guidance_scale": 7.5,  # SDXL uses guidance
             },
             "sdxl": {
                 "model_id": "stabilityai/stable-diffusion-xl-base-1.0",
@@ -106,8 +106,8 @@ class Config:
         # Device configuration (None = auto-detect)
         self.device: Optional[str] = None
 
-        # Cache directory for models
-        self.cache_dir: str = str(MODELS_CACHE_DIR)
+        # Cache directory for models (None = use default ~/.cache/huggingface/)
+        self.cache_dir: Optional[str] = None
 
         # Load overrides from file if provided
         if config_file and config_file.exists():
