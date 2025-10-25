@@ -1233,18 +1233,6 @@ async def get_interface():
                         </div>
                     </div>
 
-                    <!-- Parameters Display -->
-                    <div class="params-display" id="params-display">
-                        <div class="param-item">
-                            <span class="param-label">Active Mode:</span>
-                            <span class="param-value" id="param-mode">text2img</span>
-                        </div>
-                        <div class="param-item">
-                            <span class="param-label">Model:</span>
-                            <span class="param-value" id="param-model">SDXL</span>
-                        </div>
-                    </div>
-
                     <!-- Image Upload (shown for img2img and controlnet modes) -->
                     <div class="image-upload" id="imageUpload">
                         <label style="margin-bottom: 6px; display: block; color: #b0b0b0; font-size: 0.8em;">Reference Image</label>
@@ -2019,9 +2007,6 @@ async def get_interface():
             document.getElementById('modelLicense').textContent = info.license;
             document.getElementById('modelModality').textContent = info.modality;
 
-            // Update control panel model display (they show the same model)
-            document.getElementById('param-model').textContent = info.name;
-
             // Update educational insights
             document.getElementById('educationalInsights').innerHTML = `
                 <p style="margin: 0; font-size: 0.85em; line-height: 1.6; color: #c9d1d9;">
@@ -2106,9 +2091,6 @@ async def get_interface():
             document.querySelectorAll('.mode-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.mode === mode);
             });
-
-            // Update parameter display
-            document.getElementById('param-mode').textContent = mode;
 
             // Update block diagram visualization
             updateBlockDiagram(mode);
