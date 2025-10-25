@@ -1297,15 +1297,11 @@ async def get_interface():
                         <button type="submit" id="generateBtn" title="Start generating your image. The pipeline visualization will show real-time progress through each stage.">Generate Image</button>
                     </form>
 
-                    <h2 style="margin-top: 15px; margin-bottom: 8px; font-size: 1em;">Metrics</h2>
+                    <h2 style="margin-top: 15px; margin-bottom: 8px; font-size: 1em;">Generation Progress</h2>
                     <div class="metrics" id="metrics">
                         <div class="metric">
-                            <div class="metric-label">Current Step</div>
-                            <div class="metric-value" id="currentStep">0</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-label">Total Steps</div>
-                            <div class="metric-value" id="totalSteps">0</div>
+                            <div class="metric-label">Progress</div>
+                            <div class="metric-value" id="progressDisplay">0/30</div>
                         </div>
                         <div class="metric">
                             <div class="metric-label">Elapsed Time</div>
@@ -1314,6 +1310,10 @@ async def get_interface():
                         <div class="metric">
                             <div class="metric-label">Time/Step</div>
                             <div class="metric-value" id="timePerStep">0s</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Est. Remaining</div>
+                            <div class="metric-value" id="estRemaining">—</div>
                         </div>
                     </div>
                 </div>
@@ -1664,6 +1664,11 @@ async def get_interface():
                                     <div class="component-desc">Attention Layers</div>
                                     <div class="component-timing"></div>
                                     <div class="component-percentage"></div>
+                                    <div class="tooltip">
+                                        <div class="tooltip-title">LLM Inference</div>
+                                        <div class="tooltip-desc">Generates text token-by-token using transformer attention layers. Each layer applies self-attention to understand context and feed-forward networks to predict the next token.</div>
+                                        <div class="tooltip-tech">Architecture: Decoder-only transformer<br>Layers: 32-80 (depending on model)<br>Generation speed: 20-100 tokens/sec</div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1675,12 +1680,22 @@ async def get_interface():
                                     <div class="component-desc">TTS Model</div>
                                     <div class="component-timing"></div>
                                     <div class="component-percentage"></div>
+                                    <div class="tooltip">
+                                        <div class="tooltip-title">Text-to-Speech Synthesis</div>
+                                        <div class="tooltip-desc">Converts text into mel-spectrogram representations using neural TTS models. Models rhythm, pitch, and intonation to produce natural-sounding speech patterns.</div>
+                                        <div class="tooltip-tech">Model: Tacotron 2 or FastSpeech<br>Output: Mel-spectrogram (80 bins)<br>Time: ~0.5-1.0 seconds for short phrases</div>
+                                    </div>
                                 </div>
                                 <div class="component" data-component="asr-model" data-path="audio2text">
                                     <div class="component-name">🎧 Recognize</div>
                                     <div class="component-desc">ASR Model</div>
                                     <div class="component-timing"></div>
                                     <div class="component-percentage"></div>
+                                    <div class="tooltip">
+                                        <div class="tooltip-title">Automatic Speech Recognition</div>
+                                        <div class="tooltip-desc">Transcribes audio into text using encoder-decoder architecture. The encoder processes audio features while the decoder generates text tokens.</div>
+                                        <div class="tooltip-tech">Model: Whisper or similar<br>Languages: 100+<br>Accuracy: ~95%+ on clean audio</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1704,6 +1719,11 @@ async def get_interface():
                                     <div class="component-desc">Latents → Pixels</div>
                                     <div class="component-timing"></div>
                                     <div class="component-percentage"></div>
+                                    <div class="tooltip">
+                                        <div class="tooltip-title">VAE Decoder</div>
+                                        <div class="tooltip-desc">Transforms compressed latent representation (128×128×4) back to full-resolution pixels (1024×1024×3). Trained to reconstruct images with minimal quality loss.</div>
+                                        <div class="tooltip-tech">Architecture: Convolutional decoder with upsampling<br>Compression: 8x spatial reduction<br>Time: ~0.2-0.4 seconds</div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1715,6 +1735,11 @@ async def get_interface():
                                     <div class="component-desc">Mel → Audio</div>
                                     <div class="component-timing"></div>
                                     <div class="component-percentage"></div>
+                                    <div class="tooltip">
+                                        <div class="tooltip-title">Neural Vocoder</div>
+                                        <div class="tooltip-desc">Converts mel-spectrogram representation into raw audio waveforms. Uses neural networks (GAN or diffusion-based) to generate high-quality, natural-sounding speech.</div>
+                                        <div class="tooltip-tech">Type: HiFi-GAN or WaveGrad<br>Sampling rate: 22.05 kHz<br>Time: ~0.1-0.2 seconds</div>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1726,6 +1751,11 @@ async def get_interface():
                                     <div class="component-desc">Tokens → Text</div>
                                     <div class="component-timing"></div>
                                     <div class="component-percentage"></div>
+                                    <div class="tooltip">
+                                        <div class="tooltip-title">Detokenization</div>
+                                        <div class="tooltip-desc">Converts token IDs back into readable text. Maps numerical tokens to their corresponding words/subwords using the model's vocabulary.</div>
+                                        <div class="tooltip-tech">Process: Token IDs → Vocabulary lookup → Text<br>Time: Near-instantaneous (&lt;0.01s)</div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -2147,7 +2177,12 @@ async def get_interface():
 
         // Update steps display
         document.getElementById('steps').addEventListener('input', (e) => {
-            document.getElementById('stepsValue').textContent = e.target.value;
+            const steps = e.target.value;
+            document.getElementById('stepsValue').textContent = steps;
+            // Sync with Performance Summary
+            document.getElementById('perfSteps').textContent = steps;
+            // Update progress display
+            document.getElementById('progressDisplay').textContent = `0/${steps}`;
             updateParamDisplay();
         });
 
@@ -2158,7 +2193,9 @@ async def get_interface():
         });
 
         // Update size display
-        document.getElementById('imageSize').addEventListener('change', () => {
+        document.getElementById('imageSize').addEventListener('change', (e) => {
+            // Sync with Performance Summary
+            document.getElementById('perfImageSize').textContent = e.target.value.replace('x', '×');
             updateParamDisplay();
         });
 
@@ -2259,8 +2296,17 @@ async def get_interface():
 
             // Update metrics
             if (total > 0) {
-                document.getElementById('currentStep').textContent = progress;
-                document.getElementById('totalSteps').textContent = total;
+                document.getElementById('progressDisplay').textContent = `${progress}/${total}`;
+
+                // Calculate estimated remaining time
+                if (metrics.time_per_step && progress > 0) {
+                    const remaining = (total - progress) * metrics.time_per_step;
+                    if (remaining > 60) {
+                        document.getElementById('estRemaining').textContent = `${Math.floor(remaining / 60)}m ${Math.floor(remaining % 60)}s`;
+                    } else {
+                        document.getElementById('estRemaining').textContent = `${Math.floor(remaining)}s`;
+                    }
+                }
             }
 
             if (metrics.elapsed_time) {
