@@ -1162,10 +1162,128 @@ async def get_interface():
         <div class="status" id="status">Ready to generate</div>
 
         <div class="grid control-flow" style="align-items: start;">
-            <!-- Left Column (1fr): Model Insights and Control Panel -->
+            <!-- Left Column (1fr): Control Panel and Model Insights -->
             <div>
-                <!-- Model Insights & Performance Metrics Panel (FIRST) -->
+                <!-- Control Panel (FIRST) -->
                 <div class="panel">
+                    <h2>Control Panel</h2>
+
+                    <!-- Mode Selector -->
+                    <h3 style="margin: 0 0 6px 0; color: #b0b0b0; font-size: 0.8em;">AI Modality</h3>
+                    <div class="mode-selector">
+                        <div class="mode-btn active" data-mode="text2img" onclick="switchMode('text2img')">
+                            🎨 Text→Image
+                        </div>
+                        <div class="mode-btn" data-mode="img2img" onclick="switchMode('img2img')">
+                            🖼️ Image→Image
+                        </div>
+                        <div class="mode-btn" data-mode="controlnet" onclick="switchMode('controlnet')">
+                            🎯 Structure-Guided
+                        </div>
+                        <div class="mode-btn" data-mode="llm" onclick="switchMode('llm')">
+                            🤖 LLM Chat
+                        </div>
+                        <div class="mode-btn" data-mode="text2audio" onclick="switchMode('text2audio')">
+                            🔊 Text→Audio
+                        </div>
+                        <div class="mode-btn" data-mode="audio2text" onclick="switchMode('audio2text')">
+                            🎤 Audio→Text
+                        </div>
+                        <div class="mode-btn" data-mode="text2video" onclick="switchMode('text2video')">
+                            🎬 Text→Video
+                        </div>
+                        <div class="mode-btn" data-mode="img2video" onclick="switchMode('img2video')">
+                            📹 Image→Video
+                        </div>
+                    </div>
+
+                    <!-- Parameters Display -->
+                    <div class="params-display" id="params-display">
+                        <div class="param-item">
+                            <span class="param-label">Active Mode:</span>
+                            <span class="param-value" id="param-mode">text2img</span>
+                        </div>
+                        <div class="param-item">
+                            <span class="param-label">Model:</span>
+                            <span class="param-value" id="param-model">SDXL</span>
+                        </div>
+                    </div>
+
+                    <!-- Image Upload (shown for img2img and controlnet modes) -->
+                    <div class="image-upload" id="imageUpload">
+                        <label style="margin-bottom: 6px; display: block; color: #b0b0b0; font-size: 0.8em;">Reference Image</label>
+                        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+                            <div id="uploadText">
+                                📁 Click to upload image<br>
+                                <span style="font-size: 0.8em; color: #8b949e;">or drag and drop</span>
+                            </div>
+                            <img id="uploadPreview" class="upload-preview" style="display: none;">
+                        </div>
+                        <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
+                    </div>
+
+                    <form id="generateForm">
+                        <div class="form-group">
+                            <label>Prompt</label>
+                            <textarea id="prompt" rows="2" placeholder="a majestic giraffe in the savanna..." title="Describe what you want to generate. Be specific about subject, style, lighting, and atmosphere for best results.">a majestic giraffe standing in the African savanna, golden hour lighting</textarea>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Steps: <span id="stepsValue">30</span></label>
+                                <input type="range" id="steps" min="5" max="50" value="30" step="5" title="Number of denoising iterations. More steps = higher quality but slower generation. Recommended: 20-40 steps.">
+                            </div>
+
+                            <div class="form-group">
+                                <label>Guidance Scale: <span id="guidanceValue">7.5</span></label>
+                                <input type="range" id="guidance" min="1" max="20" value="7.5" step="0.5" title="How closely the model follows your prompt. Higher values = stricter adherence to prompt. Recommended: 7-10 for balanced results.">
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Image Size</label>
+                                <select id="imageSize" title="Output resolution. Larger sizes take more time and memory. 1024x1024 is the sweet spot for quality and speed.">
+                                    <option value="512x512">512×512 (Fast)</option>
+                                    <option value="768x768">768×768</option>
+                                    <option value="1024x1024" selected>1024×1024 (Default)</option>
+                                    <option value="1024x768">1024×768 (Landscape)</option>
+                                    <option value="768x1024">768×1024 (Portrait)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Seed (optional)</label>
+                                <input type="number" id="seed" placeholder="42" title="Random seed for reproducibility. Use the same seed with identical settings to recreate the same image. Leave empty for random results.">
+                            </div>
+                        </div>
+
+                        <button type="submit" id="generateBtn" title="Start generating your image. The pipeline visualization will show real-time progress through each stage.">Generate Image</button>
+                    </form>
+
+                    <h2 style="margin-top: 15px; margin-bottom: 8px; font-size: 1em;">Metrics</h2>
+                    <div class="metrics" id="metrics">
+                        <div class="metric">
+                            <div class="metric-label">Current Step</div>
+                            <div class="metric-value" id="currentStep">0</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Total Steps</div>
+                            <div class="metric-value" id="totalSteps">0</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Elapsed Time</div>
+                            <div class="metric-value" id="elapsedTime">0s</div>
+                        </div>
+                        <div class="metric">
+                            <div class="metric-label">Time/Step</div>
+                            <div class="metric-value" id="timePerStep">0s</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Model Insights & Performance Metrics Panel (SECOND) -->
+                <div class="panel" style="margin-top: 15px;">
                     <h2>📊 Model Insights & Performance Metrics</h2>
 
                     <div class="insights-grid">
@@ -1293,124 +1411,6 @@ async def get_interface():
                                     reducing inference steps has the biggest impact on performance.
                                 </p>
                             </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Control Panel (SECOND) -->
-                <div class="panel" style="margin-top: 15px;">
-                    <h2>Control Panel</h2>
-
-                    <!-- Mode Selector -->
-                    <h3 style="margin: 0 0 6px 0; color: #b0b0b0; font-size: 0.8em;">AI Modality</h3>
-                    <div class="mode-selector">
-                        <div class="mode-btn active" data-mode="text2img" onclick="switchMode('text2img')">
-                            🎨 Text→Image
-                        </div>
-                        <div class="mode-btn" data-mode="img2img" onclick="switchMode('img2img')">
-                            🖼️ Image→Image
-                        </div>
-                        <div class="mode-btn" data-mode="controlnet" onclick="switchMode('controlnet')">
-                            🎯 Structure-Guided
-                        </div>
-                        <div class="mode-btn" data-mode="llm" onclick="switchMode('llm')">
-                            🤖 LLM Chat
-                        </div>
-                        <div class="mode-btn" data-mode="text2audio" onclick="switchMode('text2audio')">
-                            🔊 Text→Audio
-                        </div>
-                        <div class="mode-btn" data-mode="audio2text" onclick="switchMode('audio2text')">
-                            🎤 Audio→Text
-                        </div>
-                        <div class="mode-btn" data-mode="text2video" onclick="switchMode('text2video')">
-                            🎬 Text→Video
-                        </div>
-                        <div class="mode-btn" data-mode="img2video" onclick="switchMode('img2video')">
-                            📹 Image→Video
-                        </div>
-                    </div>
-
-                    <!-- Parameters Display -->
-                    <div class="params-display" id="params-display">
-                        <div class="param-item">
-                            <span class="param-label">Active Mode:</span>
-                            <span class="param-value" id="param-mode">text2img</span>
-                        </div>
-                        <div class="param-item">
-                            <span class="param-label">Model:</span>
-                            <span class="param-value" id="param-model">SDXL</span>
-                        </div>
-                    </div>
-
-                    <!-- Image Upload (shown for img2img and controlnet modes) -->
-                    <div class="image-upload" id="imageUpload">
-                        <label style="margin-bottom: 6px; display: block; color: #b0b0b0; font-size: 0.8em;">Reference Image</label>
-                        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-                            <div id="uploadText">
-                                📁 Click to upload image<br>
-                                <span style="font-size: 0.8em; color: #8b949e;">or drag and drop</span>
-                            </div>
-                            <img id="uploadPreview" class="upload-preview" style="display: none;">
-                        </div>
-                        <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleImageUpload(event)">
-                    </div>
-
-                    <form id="generateForm">
-                        <div class="form-group">
-                            <label>Prompt</label>
-                            <textarea id="prompt" rows="2" placeholder="a majestic giraffe in the savanna..." title="Describe what you want to generate. Be specific about subject, style, lighting, and atmosphere for best results.">a majestic giraffe standing in the African savanna, golden hour lighting</textarea>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Steps: <span id="stepsValue">30</span></label>
-                                <input type="range" id="steps" min="5" max="50" value="30" step="5" title="Number of denoising iterations. More steps = higher quality but slower generation. Recommended: 20-40 steps.">
-                            </div>
-
-                            <div class="form-group">
-                                <label>Guidance Scale: <span id="guidanceValue">7.5</span></label>
-                                <input type="range" id="guidance" min="1" max="20" value="7.5" step="0.5" title="How closely the model follows your prompt. Higher values = stricter adherence to prompt. Recommended: 7-10 for balanced results.">
-                            </div>
-                        </div>
-
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Image Size</label>
-                                <select id="imageSize" title="Output resolution. Larger sizes take more time and memory. 1024x1024 is the sweet spot for quality and speed.">
-                                    <option value="512x512">512×512 (Fast)</option>
-                                    <option value="768x768">768×768</option>
-                                    <option value="1024x1024" selected>1024×1024 (Default)</option>
-                                    <option value="1024x768">1024×768 (Landscape)</option>
-                                    <option value="768x1024">768×1024 (Portrait)</option>
-                                </select>
-                            </div>
-
-                            <div class="form-group">
-                                <label>Seed (optional)</label>
-                                <input type="number" id="seed" placeholder="42" title="Random seed for reproducibility. Use the same seed with identical settings to recreate the same image. Leave empty for random results.">
-                            </div>
-                        </div>
-
-                        <button type="submit" id="generateBtn" title="Start generating your image. The pipeline visualization will show real-time progress through each stage.">Generate Image</button>
-                    </form>
-
-                    <h2 style="margin-top: 15px; margin-bottom: 8px; font-size: 1em;">Metrics</h2>
-                    <div class="metrics" id="metrics">
-                        <div class="metric">
-                            <div class="metric-label">Current Step</div>
-                            <div class="metric-value" id="currentStep">0</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-label">Total Steps</div>
-                            <div class="metric-value" id="totalSteps">0</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-label">Elapsed Time</div>
-                            <div class="metric-value" id="elapsedTime">0s</div>
-                        </div>
-                        <div class="metric">
-                            <div class="metric-label">Time/Step</div>
-                            <div class="metric-value" id="timePerStep">0s</div>
                         </div>
                     </div>
                 </div>
