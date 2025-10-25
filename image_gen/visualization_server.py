@@ -1249,7 +1249,7 @@ async def get_interface():
                     <form id="generateForm">
                         <div class="form-group">
                             <label>Prompt</label>
-                            <textarea id="prompt" rows="2" placeholder="a majestic giraffe in the savanna..." title="Describe what you want to generate. Be specific about subject, style, lighting, and atmosphere for best results.">a majestic giraffe standing in the African savanna, golden hour lighting</textarea>
+                            <textarea id="prompt" rows="2" placeholder="creative prompt will be generated..." title="Describe what you want to generate. Be specific about subject, style, lighting, and atmosphere for best results."></textarea>
                         </div>
 
                         <div class="form-row">
@@ -2083,6 +2083,107 @@ async def get_interface():
             });
         }
 
+        // Creative prompts for each mode (randomized on mode switch)
+        const creativePrompts = {
+            text2img: [
+                "a cyberpunk cityscape at sunset with neon lights reflecting on wet streets",
+                "a majestic dragon perched on a mountain peak overlooking misty valleys",
+                "an astronaut floating in a garden of bioluminescent flowers in space",
+                "a steampunk airship soaring through clouds above a Victorian city",
+                "a cozy library with floating books and magical glowing orbs",
+                "a mystical forest with giant mushrooms and fairy lights at twilight",
+                "a futuristic sports car racing through a tunnel of light and energy",
+                "an ancient temple hidden in a jungle with golden sunlight streaming through vines",
+                "a peaceful zen garden with a koi pond and cherry blossoms in full bloom",
+                "a retro-futuristic diner on Mars with robots serving milkshakes",
+                "a massive whale swimming through clouds above a sunset ocean",
+                "a crystal cave filled with rainbow-colored geodes and underground waterfalls",
+                "a medieval knight's armor displayed in a grand hall with dramatic lighting",
+                "a colorful hot air balloon festival at dawn over rolling hills",
+                "a underwater research station surrounded by curious sea creatures and coral reefs"
+            ],
+            text2audio: [
+                "gentle rain falling on a tin roof with distant thunder",
+                "a jazz saxophone solo in a smoky nightclub",
+                "ocean waves crashing on a rocky shore with seagulls calling",
+                "a crackling campfire with crickets chirping in the background",
+                "a busy coffee shop with espresso machines and quiet conversations",
+                "medieval tavern ambience with lute music and cheerful chatter",
+                "spaceship engine humming while traveling through hyperspace",
+                "a thunderstorm with heavy rain and frequent lightning cracks"
+            ],
+            text2video: [
+                "a time-lapse of clouds forming into a dramatic storm over the ocean",
+                "a flower blooming from bud to full bloom in accelerated time",
+                "a bustling Tokyo street at night with neon signs and pedestrians",
+                "a camera flying through a futuristic city with flying cars and skyscrapers",
+                "a waterfall freezing and thawing in a seasonal time-lapse",
+                "northern lights dancing across a starry Arctic sky"
+            ],
+            llm: [
+                "Explain quantum entanglement like I'm a curious 10-year-old",
+                "Write a haiku about artificial intelligence",
+                "What would happen if gravity suddenly became twice as strong?",
+                "Create a short story about a time-traveling detective"
+            ],
+            audio2text: [
+                "(Upload or speak: a podcast episode, lecture, or voice note to transcribe)",
+                "(Upload audio: interview, meeting recording, or musical performance to analyze)"
+            ]
+        };
+
+        // Image-based prompts that reference existing images in outputs/
+        const imageBasedPrompts = {
+            img2img: [
+                "transform this image into a watercolor painting with soft, flowing brushstrokes",
+                "convert to a dramatic black and white photograph with high contrast",
+                "reimagine as a vibrant pop art piece with bold colors and comic book styling",
+                "add a mystical fog and fantasy lighting to create an ethereal atmosphere",
+                "transform into a vintage 1920s photograph with sepia tones and grain",
+                "make it look like an oil painting by Van Gogh with swirling, expressive strokes",
+                "add a sunset color palette with warm oranges and purples",
+                "convert to a cyberpunk aesthetic with neon highlights and futuristic elements",
+                "transform into a pencil sketch with delicate shading and fine details",
+                "add dramatic storm clouds and moody lighting"
+            ],
+            img2video: [
+                "create a gentle camera pan across this scene from left to right",
+                "add subtle parallax effect to create depth and dimension",
+                "animate with a slow zoom-in while adding particles or snow falling",
+                "create a cinemagraph where one element moves (water, clouds, or fabric)",
+                "add a gentle breathing effect to make the image feel alive",
+                "create a rotating camera movement around the main subject"
+            ],
+            controlnet: [
+                "create a photorealistic portrait following the pose and structure",
+                "transform the structure into a fantasy landscape with mountains and castles",
+                "convert the structural outline into a futuristic architecture design",
+                "use the edge structure to create an anime-style character illustration"
+            ]
+        };
+
+        // Function to get a random item from an array
+        function getRandomItem(array) {
+            return array[Math.floor(Math.random() * array.length)];
+        }
+
+        // Function to set a random creative prompt based on mode
+        function setRandomPrompt(mode) {
+            const promptField = document.getElementById('prompt');
+
+            // Determine which prompt list to use
+            let promptList;
+            if (mode === 'img2img' || mode === 'img2video' || mode === 'controlnet') {
+                promptList = imageBasedPrompts[mode] || creativePrompts.text2img;
+            } else {
+                promptList = creativePrompts[mode] || creativePrompts.text2img;
+            }
+
+            // Set random prompt
+            const randomPrompt = getRandomItem(promptList);
+            promptField.value = randomPrompt;
+        }
+
         // Switch generation mode
         function switchMode(mode) {
             currentMode = mode;
@@ -2100,21 +2201,14 @@ async def get_interface():
 
             // Show/hide image upload
             const imageUpload = document.getElementById('imageUpload');
-            if (mode === 'img2img' || mode === 'controlnet') {
+            if (mode === 'img2img' || mode === 'controlnet' || mode === 'img2video') {
                 imageUpload.classList.add('visible');
             } else {
                 imageUpload.classList.remove('visible');
             }
 
-            // Update prompt placeholder
-            const promptField = document.getElementById('prompt');
-            if (mode === 'img2img') {
-                promptField.placeholder = 'describe how you want to modify the image...';
-            } else if (mode === 'controlnet') {
-                promptField.placeholder = 'describe the image using the control structure...';
-            } else {
-                promptField.placeholder = 'a majestic giraffe in the savanna...';
-            }
+            // Set random creative prompt for the new mode
+            setRandomPrompt(mode);
 
             console.log(`Switched to ${mode} mode`);
         }
@@ -2430,6 +2524,7 @@ async def get_interface():
         connectWebSocket();
         updateModelInsights('text2img'); // Initialize with default mode
         updateParamDisplay(); // Initialize parameter display
+        setRandomPrompt('text2img'); // Set initial random prompt
     </script>
 </body>
 </html>

@@ -18,7 +18,7 @@ from diffusers import (
     ControlNetModel
 )
 from PIL import Image
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple, Union, List
 import logging
 import time
 import io
@@ -220,6 +220,123 @@ class FluxGenerator:
         except Exception as e:
             logger.error(f"Generation failed: {e}")
             raise RuntimeError(f"Image generation failed: {e}")
+
+    def generate_progressive(
+        self,
+        prompt: str,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        num_inference_steps: Optional[int] = None,
+        seed: Optional[int] = None,
+        callback_steps: int = 1,
+    ) -> Tuple[Image.Image, List[Image.Image]]:
+        """
+        Generate an image with progressive step-by-step visualization.
+
+        This captures the SAME image at each denoising step, showing how
+        the image evolves from noise to the final result.
+
+        Args:
+            prompt: Text description of the image to generate
+            height: Output height in pixels (default: 1024)
+            width: Output width in pixels (default: 1024)
+            num_inference_steps: Number of denoising steps (default: 30)
+            seed: Random seed for reproducibility (optional)
+            callback_steps: Capture image every N steps (default: 1 for all steps)
+
+        Returns:
+            Tuple of (final_image, list_of_intermediate_images)
+
+        Example:
+            >>> gen = FluxGenerator()
+            >>> final, intermediates = gen.generate_progressive(
+            ...     prompt="a serene lake at sunset",
+            ...     num_inference_steps=30,
+            ...     callback_steps=5  # Capture every 5 steps
+            ... )
+            >>> # intermediates = [step_5, step_10, step_15, ...]
+        """
+        if not prompt or not prompt.strip():
+            raise ValueError("Prompt cannot be empty")
+
+        # Use config defaults if not specified
+        height = height or self.config["default_size"][0]
+        width = width or self.config["default_size"][1]
+        num_inference_steps = num_inference_steps or self.config.get("default_steps", 30)
+
+        logger.info(f"Generating progressive visualization: '{prompt[:50]}...' ({num_inference_steps} steps)")
+
+        # Storage for intermediate images
+        intermediate_images = []
+
+        # Callback function to capture intermediate latents
+        def step_callback(pipe, step_index, timestep, callback_kwargs):
+            """Callback function called at each denoising step."""
+            # Get the current latents
+            latents = callback_kwargs.get("latents")
+
+            if latents is not None and step_index % callback_steps == 0:
+                # Decode latents to image
+                with torch.no_grad():
+                    # Scale latents back from latent space
+                    latents_scaled = latents / pipe.vae.config.scaling_factor
+                    # Decode to pixel space
+                    image_tensor = pipe.vae.decode(latents_scaled).sample
+                    # Convert to PIL Image
+                    image_tensor = (image_tensor / 2 + 0.5).clamp(0, 1)
+                    image_tensor = image_tensor.cpu().permute(0, 2, 3, 1).float().numpy()
+                    image = pipe.numpy_to_pil(image_tensor)[0]
+
+                    intermediate_images.append((step_index, image))
+                    logger.debug(f"Captured intermediate at step {step_index}/{num_inference_steps}")
+
+            return callback_kwargs
+
+        start_time = time.time()
+
+        try:
+            # Set seed for reproducibility
+            generator = None
+            if seed is not None:
+                generator = torch.Generator(device=self.device).manual_seed(seed)
+                logger.info(f"Using seed: {seed}")
+
+            # Generate with callback
+            if "flux" in self.model_id.lower():
+                output = self.pipeline(
+                    prompt=prompt,
+                    height=height,
+                    width=width,
+                    num_inference_steps=num_inference_steps,
+                    generator=generator,
+                    callback_on_step_end=step_callback,
+                )
+            else:
+                # SDXL uses guidance_scale
+                output = self.pipeline(
+                    prompt=prompt,
+                    height=height,
+                    width=width,
+                    num_inference_steps=num_inference_steps,
+                    guidance_scale=self.config.get("guidance_scale", 7.5),
+                    generator=generator,
+                    callback_on_step_end=step_callback,
+                )
+
+            final_image = output.images[0]
+            gen_time = time.time() - start_time
+
+            logger.info(f"✓ Progressive generation complete in {gen_time:.2f}s")
+            logger.info(f"✓ Captured {len(intermediate_images)} intermediate steps")
+
+            # Extract just the images (without step numbers) for return
+            intermediate_list = [img for (step, img) in intermediate_images]
+
+            return final_image, intermediate_list
+
+        except Exception as e:
+            logger.error(f"Progressive generation failed: {e}")
+            raise RuntimeError(f"Progressive generation failed: {e}")
 
     def generate_img2img(
         self,
