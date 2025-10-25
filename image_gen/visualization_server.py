@@ -365,6 +365,24 @@ async def get_interface():
             white-space: nowrap;
         }
 
+        .vertical-connector-label {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #1a1f3a 0%, #0d1117 100%);
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-size: 0.7em;
+            color: #4fc3f7;
+            border: 2px solid #2a3f5f;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            white-space: nowrap;
+            z-index: 10;
+        }
+
         /* Internal Sequential Flow Arrow */
         .seq-arrow {
             display: flex;
@@ -885,15 +903,33 @@ async def get_interface():
             font-weight: 600;
         }
 
-        /* Image Display */
-        .image-display {
+        /* Model Output Display */
+        .output-display {
             text-align: center;
             padding: 20px;
         }
-        .image-display img {
+        .output-display img {
             max-width: 100%;
             border-radius: 8px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .output-display video {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        .output-display audio {
+            width: 100%;
+            margin: 10px 0;
+        }
+        .output-display pre {
+            text-align: left;
+            background: #1e2d3d;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            max-height: 500px;
+            overflow-y: auto;
         }
 
         /* Mode Selector */
@@ -1254,7 +1290,7 @@ async def get_interface():
 
                             <div class="form-group">
                                 <label>Seed (optional)</label>
-                                <input type="number" id="seed" placeholder="42" title="Random seed for reproducibility. Use the same seed with identical settings to recreate the same image. Leave empty for random results.">
+                                <input type="text" id="seed" placeholder="42" title="Random seed for reproducibility. Use the same seed with identical settings to recreate the same image. Leave empty for random results.">
                             </div>
                         </div>
 
@@ -1593,7 +1629,7 @@ async def get_interface():
                                      style="filter: drop-shadow(0 0 5px rgba(79, 195, 247, 0.6));"/>
                         </svg>
                         <!-- Label -->
-                        <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: linear-gradient(135deg, #1a1f3a 0%, #0d1117 100%); padding: 6px 16px; border-radius: 6px; font-size: 0.7em; color: #4fc3f7; border: 2px solid #2a3f5f; font-weight: 600; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); white-space: nowrap; z-index: 10;">PROCESS</div>
+                        <div class="vertical-connector-label">PROCESS</div>
                     </div>
 
                     <!-- HORIZONTAL ROW: PROCESSING and DECODING side-by-side -->
@@ -1721,7 +1757,7 @@ async def get_interface():
                                      style="filter: drop-shadow(0 0 5px rgba(79, 195, 247, 0.6));"/>
                         </svg>
                         <!-- Label -->
-                        <div style="position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: linear-gradient(135deg, #1a1f3a 0%, #0d1117 100%); padding: 6px 16px; border-radius: 6px; font-size: 0.7em; color: #4fc3f7; border: 2px solid #2a3f5f; font-weight: 600; letter-spacing: 0.5px; box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4); white-space: nowrap; z-index: 10;">FINALIZE</div>
+                        <div class="vertical-connector-label">FINALIZE</div>
                     </div>
 
                     <!-- OUTPUT STAGE (Common End) -->
@@ -1746,13 +1782,6 @@ async def get_interface():
                 </div>
 
             </div>
-        </div>
-
-
-        <!-- Event Timeline (Full Width Below) -->
-        <div class="panel">
-            <h2>Event Timeline</h2>
-            <div class="timeline" id="timeline"></div>
         </div>
 
         <!-- README Section -->
@@ -1812,9 +1841,9 @@ async def get_interface():
 
             <div>
                 <div class="panel">
-                    <h2>Generated Image</h2>
-                    <div class="image-display" id="imageDisplay">
-                        <p style="color: #666;">Generated image will appear here</p>
+                    <h2>Model Output</h2>
+                    <div class="output-display" id="outputDisplay">
+                        <p style="color: #666;">Model output will appear here (image, video, text, or audio)</p>
                     </div>
                 </div>
             </div>
@@ -1960,6 +1989,9 @@ async def get_interface():
             document.getElementById('modelLicense').textContent = info.license;
             document.getElementById('modelModality').textContent = info.modality;
 
+            // Update control panel model display (they show the same model)
+            document.getElementById('param-model').textContent = info.name;
+
             // Update educational insights
             document.getElementById('educationalInsights').innerHTML = `
                 <p style="margin: 0; font-size: 0.85em; line-height: 1.6; color: #c9d1d9;">
@@ -2062,9 +2094,6 @@ async def get_interface():
                 imageUpload.classList.remove('visible');
             }
 
-            // Model remains SDXL - flow changes instead
-            document.getElementById('param-model').textContent = 'SDXL';
-
             // Update prompt placeholder
             const promptField = document.getElementById('prompt');
             if (mode === 'img2img') {
@@ -2145,7 +2174,6 @@ async def get_interface():
 
             ws.onopen = () => {
                 console.log('WebSocket connected');
-                addTimelineEntry('Connected to server', '66bb6a');
             };
 
             ws.onmessage = (event) => {
@@ -2242,9 +2270,6 @@ async def get_interface():
                 document.getElementById('timePerStep').textContent = metrics.time_per_step.toFixed(2) + 's';
             }
 
-            // Add timeline entry
-            addTimelineEntry(message);
-
             // Mark completed components
             if (component === 'complete') {
                 generating = false;
@@ -2284,20 +2309,7 @@ async def get_interface():
             }
         }
 
-        function addTimelineEntry(message, color = '4fc3f7') {
-            const timeline = document.getElementById('timeline');
-            const entry = document.createElement('div');
-            entry.className = 'timeline-entry';
-            const time = new Date().toLocaleTimeString();
-            entry.innerHTML = `<span class="timeline-time">${time}</span> - ${message}`;
-            entry.style.borderLeftColor = '#' + color;
-            timeline.insertBefore(entry, timeline.firstChild);
-
-            // Keep only last 20 entries
-            while (timeline.children.length > 20) {
-                timeline.removeChild(timeline.lastChild);
-            }
-        }
+        // Timeline function removed - using Pipeline Stage Breakdown instead
 
         // Handle form submission
         document.getElementById('generateForm').addEventListener('submit', async (e) => {
@@ -2364,16 +2376,23 @@ async def get_interface():
                 const result = await response.json();
 
                 if (result.success) {
-                    // Display generated image
-                    const imageDisplay = document.getElementById('imageDisplay');
-                    imageDisplay.innerHTML = `<img src="/image/${result.filename}" alt="Generated image">`;
-                    addTimelineEntry('Image generated successfully!', '66bb6a');
+                    // Display model output based on mode
+                    const outputDisplay = document.getElementById('outputDisplay');
+
+                    if (currentMode === 'text2img' || currentMode === 'img2img' || currentMode === 'controlnet') {
+                        outputDisplay.innerHTML = `<img src="/image/${result.filename}" alt="Generated image">`;
+                    } else if (currentMode === 'text2video' || currentMode === 'img2video') {
+                        outputDisplay.innerHTML = `<video controls><source src="/video/${result.filename}" type="video/mp4"></video>`;
+                    } else if (currentMode === 'text2audio') {
+                        outputDisplay.innerHTML = `<audio controls><source src="/audio/${result.filename}" type="audio/mpeg"></audio>`;
+                    } else if (currentMode === 'audio2text' || currentMode === 'llm') {
+                        outputDisplay.innerHTML = `<pre>${result.text || result.content}</pre>`;
+                    }
                 } else {
-                    addTimelineEntry('Generation failed: ' + result.error, 'f44336');
+                    console.error('Generation failed:', result.error);
                 }
             } catch (error) {
                 console.error('Generation error:', error);
-                addTimelineEntry('Error: ' + error.message, 'f44336');
                 generating = false;
                 document.getElementById('generateBtn').disabled = false;
             }
