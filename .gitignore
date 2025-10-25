@@ -60,3 +60,16 @@ config/local.yaml
 # Logs
 *.log
 logs/
+
+# Sensitive files (defensive)
+credentials.json
+secrets.yaml
+*.key
+*.pem
+*.p12
+auth.json
+
+# Temporary test files
+test_ui_layout.*
+fixed_ui_layout.*
+*_backup_*.txt

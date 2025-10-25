@@ -10,11 +10,19 @@ It generates high-quality images in 2-4 steps, making it ideal as the primary mo
 """
 
 import torch
-from diffusers import FluxPipeline, StableDiffusionXLPipeline
+from diffusers import (
+    FluxPipeline,
+    StableDiffusionXLPipeline,
+    StableDiffusionXLImg2ImgPipeline,
+    StableDiffusionXLControlNetPipeline,
+    ControlNetModel
+)
 from PIL import Image
 from typing import Optional, Tuple, Union
 import logging
 import time
+import io
+import base64
 
 from image_gen.config import get_config
 from image_gen.utils.device import get_device
@@ -77,6 +85,10 @@ class FluxGenerator:
 
         # Track loading time
         start_time = time.time()
+
+        # Store additional pipelines for img2img and controlnet
+        self.img2img_pipeline = None
+        self.controlnet_pipeline = None
 
         try:
             # Load pipeline with torch_dtype for memory efficiency
@@ -208,6 +220,81 @@ class FluxGenerator:
         except Exception as e:
             logger.error(f"Generation failed: {e}")
             raise RuntimeError(f"Image generation failed: {e}")
+
+    def generate_img2img(
+        self,
+        prompt: str,
+        init_image: Union[Image.Image, str],
+        strength: float = 0.8,
+        height: Optional[int] = None,
+        width: Optional[int] = None,
+        num_inference_steps: Optional[int] = None,
+        seed: Optional[int] = None,
+    ) -> Image.Image:
+        """
+        Generate image from existing image (img2img).
+
+        Args:
+            prompt: Text description of desired modifications
+            init_image: PIL Image or base64 encoded string
+            strength: How much to transform (0.0-1.0, higher = more changes)
+            height: Output height
+            width: Output width
+            num_inference_steps: Number of denoising steps
+            seed: Random seed
+
+        Returns:
+            PIL Image object
+        """
+        # Decode base64 if needed
+        if isinstance(init_image, str):
+            if init_image.startswith('data:image'):
+                init_image = init_image.split(',')[1]
+            image_data = base64.b64decode(init_image)
+            init_image = Image.open(io.BytesIO(image_data)).convert('RGB')
+
+        # Lazy load img2img pipeline
+        if self.img2img_pipeline is None:
+            logger.info("Loading img2img pipeline...")
+            if self.device.type == "mps":
+                self.img2img_pipeline = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+                    self.model_id,
+                    torch_dtype=torch.float16,
+                    cache_dir=get_config().cache_dir
+                ).to(self.device)
+            elif self.device.type == "cuda":
+                self.img2img_pipeline = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+                    self.model_id,
+                    torch_dtype=torch.float16,
+                    cache_dir=get_config().cache_dir
+                ).to(self.device)
+            else:
+                self.img2img_pipeline = StableDiffusionXLImg2ImgPipeline.from_pretrained(
+                    self.model_id,
+                    torch_dtype=torch.float32,
+                    cache_dir=get_config().cache_dir
+                )
+
+        # Use defaults
+        num_inference_steps = num_inference_steps or self.config["default_steps"]
+
+        # Generate
+        generator = None
+        if seed is not None:
+            generator = torch.Generator(device=self.device).manual_seed(seed)
+
+        logger.info(f"Img2img: '{prompt[:50]}...' (strength={strength})")
+
+        output = self.img2img_pipeline(
+            prompt=prompt,
+            image=init_image,
+            strength=strength,
+            num_inference_steps=num_inference_steps,
+            guidance_scale=self.config.get("guidance_scale", 7.5),
+            generator=generator,
+        )
+
+        return output.images[0]
 
     def generate_batch(
         self,

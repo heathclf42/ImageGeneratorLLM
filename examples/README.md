@@ -114,7 +114,7 @@ For integrating with your Qwen LLM in MessageAnalyzer:
 
 1. **Start the REST API server** (in ImageGeneratorLLM directory):
    ```bash
-   cd /Users/bradmusick/Documents/Python/Projects/ImageGeneratorLLM
+   cd /Users/bradmusick/Documents/Projects/ImageGeneratorLLM
    source venv/bin/activate
    python -m image_gen.server
    ```
